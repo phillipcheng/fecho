@@ -12,7 +12,7 @@ import type {
   TemplatePatch,
 } from "./repository.js";
 
-/** In-memory Repository. Default backend; fully synchronous and test-friendly. */
+/** In-memory Repository. Default backend; resolves immediately, test-friendly. */
 export class MemoryRepository implements Repository {
   private spaces = new Map<string, Space>();
   private templates = new Map<string, Template>();
@@ -20,7 +20,7 @@ export class MemoryRepository implements Repository {
   private exchanges = new Map<string, Exchange>();
 
   // ----- spaces -----
-  createSpace(input: CreateSpaceInput): Space {
+  async createSpace(input: CreateSpaceInput): Promise<Space> {
     const ts = nowIso();
     const space: Space = {
       id: newId("spc"),
@@ -34,15 +34,15 @@ export class MemoryRepository implements Repository {
     return space;
   }
 
-  getSpace(id: string): Space | undefined {
+  async getSpace(id: string): Promise<Space | undefined> {
     return this.spaces.get(id);
   }
 
-  listSpaces(): Space[] {
+  async listSpaces(): Promise<Space[]> {
     return [...this.spaces.values()];
   }
 
-  updateSpace(id: string, patch: SpacePatch): Space | undefined {
+  async updateSpace(id: string, patch: SpacePatch): Promise<Space | undefined> {
     const existing = this.spaces.get(id);
     if (!existing) return undefined;
     const updated: Space = { ...existing, ...patch, updatedAt: nowIso() };
@@ -50,15 +50,15 @@ export class MemoryRepository implements Repository {
     return updated;
   }
 
-  deleteSpace(id: string): boolean {
+  async deleteSpace(id: string): Promise<boolean> {
     if (!this.spaces.delete(id)) return false;
     // cascade
-    for (const t of this.listTemplates(id)) this.deleteTemplate(t.id);
+    for (const t of await this.listTemplates(id)) await this.deleteTemplate(t.id);
     return true;
   }
 
   // ----- templates -----
-  createTemplate(input: CreateTemplateInput): Template {
+  async createTemplate(input: CreateTemplateInput): Promise<Template> {
     const ts = nowIso();
     const template: Template = {
       id: newId("tpl"),
@@ -77,16 +77,19 @@ export class MemoryRepository implements Repository {
     return template;
   }
 
-  getTemplate(id: string): Template | undefined {
+  async getTemplate(id: string): Promise<Template | undefined> {
     return this.templates.get(id);
   }
 
-  listTemplates(spaceId?: string): Template[] {
+  async listTemplates(spaceId?: string): Promise<Template[]> {
     const all = [...this.templates.values()];
     return spaceId ? all.filter((t) => t.spaceId === spaceId) : all;
   }
 
-  updateTemplate(id: string, patch: TemplatePatch): Template | undefined {
+  async updateTemplate(
+    id: string,
+    patch: TemplatePatch,
+  ): Promise<Template | undefined> {
     const existing = this.templates.get(id);
     if (!existing) return undefined;
     const updated: Template = { ...existing, ...patch, updatedAt: nowIso() };
@@ -94,14 +97,15 @@ export class MemoryRepository implements Repository {
     return updated;
   }
 
-  deleteTemplate(id: string): boolean {
+  async deleteTemplate(id: string): Promise<boolean> {
     if (!this.templates.delete(id)) return false;
-    for (const s of this.listScenes({ templateId: id })) this.deleteScene(s.id);
+    for (const s of await this.listScenes({ templateId: id }))
+      await this.deleteScene(s.id);
     return true;
   }
 
   // ----- scenes -----
-  createScene(input: CreateSceneInput): Scene {
+  async createScene(input: CreateSceneInput): Promise<Scene> {
     const ts = nowIso();
     const scene: Scene = {
       id: newId("scn"),
@@ -119,11 +123,14 @@ export class MemoryRepository implements Repository {
     return scene;
   }
 
-  getScene(id: string): Scene | undefined {
+  async getScene(id: string): Promise<Scene | undefined> {
     return this.scenes.get(id);
   }
 
-  listScenes(filter?: { spaceId?: string; templateId?: string }): Scene[] {
+  async listScenes(filter?: {
+    spaceId?: string;
+    templateId?: string;
+  }): Promise<Scene[]> {
     let all = [...this.scenes.values()];
     if (filter?.spaceId) all = all.filter((s) => s.spaceId === filter.spaceId);
     if (filter?.templateId)
@@ -131,7 +138,7 @@ export class MemoryRepository implements Repository {
     return all;
   }
 
-  updateScene(id: string, patch: ScenePatch): Scene | undefined {
+  async updateScene(id: string, patch: ScenePatch): Promise<Scene | undefined> {
     const existing = this.scenes.get(id);
     if (!existing) return undefined;
     const updated: Scene = { ...existing, ...patch, updatedAt: nowIso() };
@@ -139,12 +146,12 @@ export class MemoryRepository implements Repository {
     return updated;
   }
 
-  deleteScene(id: string): boolean {
+  async deleteScene(id: string): Promise<boolean> {
     return this.scenes.delete(id);
   }
 
   // ----- exchanges -----
-  addExchanges(inputs: AddExchangeInput[]): Exchange[] {
+  async addExchanges(inputs: AddExchangeInput[]): Promise<Exchange[]> {
     return inputs.map((input) => {
       const exchange: Exchange = { ...input, id: input.id ?? newId("xch") };
       this.exchanges.set(exchange.id, exchange);
@@ -152,15 +159,15 @@ export class MemoryRepository implements Repository {
     });
   }
 
-  listExchanges(filter?: ExchangeFilter): Exchange[] {
+  async listExchanges(filter?: ExchangeFilter): Promise<Exchange[]> {
     let all = [...this.exchanges.values()];
     if (filter?.psm) all = all.filter((e) => e.psm === filter.psm);
     if (filter?.method) all = all.filter((e) => e.method === filter.method);
     return all;
   }
 
-  clearExchanges(filter?: ExchangeFilter): number {
-    const toRemove = this.listExchanges(filter);
+  async clearExchanges(filter?: ExchangeFilter): Promise<number> {
+    const toRemove = await this.listExchanges(filter);
     for (const e of toRemove) this.exchanges.delete(e.id);
     return toRemove.length;
   }

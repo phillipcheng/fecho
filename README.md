@@ -12,7 +12,7 @@ scenario-coverage platforms (Nario): you define **scenes** as labelled feature
 combinations, feed in recorded **traffic**, and echo reports which scenes were
 hit and your overall scene-coverage rate.
 
-> Status: **engine + HTTP API + React web UI** (v1).
+> Status: **engine + HTTP API + React web UI + MySQL persistence** (v1).
 
 ## Concepts
 
@@ -54,9 +54,39 @@ value-comparing condition is satisfied when **any** resolved value matches.
 
 ```bash
 npm install
-npm test          # 35 tests
+npm test          # 35 unit tests (+1 opt-in MySQL integration test)
 npm run build
 npm start         # API on :3000 (PORT / HOST env vars)
+```
+
+### Persistence
+
+By default echo runs on an **in-memory** store (great for tests and demos —
+data is lost on restart). Set the `MYSQL_*` env vars and it persists to
+**MySQL / MariaDB**, auto-creating the database and tables on first boot:
+
+```bash
+# either discrete vars…
+MYSQL_HOST=127.0.0.1 MYSQL_PORT=3306 \
+MYSQL_USER=echo MYSQL_PASSWORD=secret MYSQL_DATABASE=echo \
+  npm start
+
+# …or a single URL
+ECHO_MYSQL_URL="mysql://echo:secret@127.0.0.1:3306/echo" npm start
+```
+
+The store is chosen at startup: MySQL when configured, otherwise in-memory
+(the boot log says which). Schema lives in four tables — `spaces`, `templates`,
+`scenes`, `exchanges` — with `features` / `conditions` / request & response
+bodies held in JSON columns (MySQL 8 and MariaDB both supported). Give echo its
+**own database**; its generic table names (`spaces`, …) will otherwise collide
+with an existing app schema. Set `ECHO_MYSQL_CREATE_DB=false` if the database is
+pre-provisioned and the app user can't create databases.
+
+Run the integration test against a throwaway schema:
+
+```bash
+ECHO_MYSQL_TEST_URL="mysql://echo:secret@127.0.0.1:3306/echo_test" npm test
 ```
 
 ### Web UI
@@ -124,7 +154,7 @@ the supplied traffic ad-hoc; otherwise it uses stored exchanges.
 
 ## Roadmap
 
-- Persistent stores (SQLite / Postgres) behind the `Repository` interface
+- More persistent stores (SQLite / Postgres) behind the `Repository` interface
 - Traffic ingestion adapters (capture proxy, log import)
 - Scene recommendation from observed traffic
 - gRPC / Thrift exchange support

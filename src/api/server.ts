@@ -44,26 +44,26 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const body = req.body as CreateSpaceInput;
     const err = requireFields(body, ["name"]);
     if (err) return reply.code(400).send({ error: err });
-    return reply.code(201).send(repo.createSpace(body));
+    return reply.code(201).send(await repo.createSpace(body));
   });
 
   app.get("/spaces", async () => repo.listSpaces());
 
   app.get("/spaces/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const space = repo.getSpace(id);
+    const space = await repo.getSpace(id);
     return space ? space : reply.code(404).send({ error: "space not found" });
   });
 
   app.patch("/spaces/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const updated = repo.updateSpace(id, req.body as SpacePatch);
+    const updated = await repo.updateSpace(id, req.body as SpacePatch);
     return updated ? updated : reply.code(404).send({ error: "space not found" });
   });
 
   app.delete("/spaces/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return repo.deleteSpace(id)
+    return (await repo.deleteSpace(id))
       ? reply.code(204).send()
       : reply.code(404).send({ error: "space not found" });
   });
@@ -71,16 +71,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // ----- templates -----
   app.post("/templates", async (req, reply) => {
     const body = req.body as CreateTemplateInput;
-    const err = requireFields(body, [
-      "spaceId",
-      "name",
-      "psm",
-      "method",
-    ]);
+    const err = requireFields(body, ["spaceId", "name", "psm", "method"]);
     if (err) return reply.code(400).send({ error: err });
-    if (!repo.getSpace(body.spaceId))
+    if (!(await repo.getSpace(body.spaceId)))
       return reply.code(400).send({ error: "spaceId does not exist" });
-    return reply.code(201).send(repo.createTemplate(body));
+    return reply.code(201).send(await repo.createTemplate(body));
   });
 
   app.get("/templates", async (req) => {
@@ -90,19 +85,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   app.get("/templates/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const tpl = repo.getTemplate(id);
+    const tpl = await repo.getTemplate(id);
     return tpl ? tpl : reply.code(404).send({ error: "template not found" });
   });
 
   app.patch("/templates/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const updated = repo.updateTemplate(id, req.body as TemplatePatch);
+    const updated = await repo.updateTemplate(id, req.body as TemplatePatch);
     return updated ? updated : reply.code(404).send({ error: "template not found" });
   });
 
   app.delete("/templates/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return repo.deleteTemplate(id)
+    return (await repo.deleteTemplate(id))
       ? reply.code(204).send()
       : reply.code(404).send({ error: "template not found" });
   });
@@ -110,15 +105,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // ----- scenes -----
   app.post("/scenes", async (req, reply) => {
     const body = req.body as CreateSceneInput;
-    const err = requireFields(body, [
-      "spaceId",
-      "templateId",
-      "name",
-    ]);
+    const err = requireFields(body, ["spaceId", "templateId", "name"]);
     if (err) return reply.code(400).send({ error: err });
-    if (!repo.getTemplate(body.templateId))
+    if (!(await repo.getTemplate(body.templateId)))
       return reply.code(400).send({ error: "templateId does not exist" });
-    return reply.code(201).send(repo.createScene(body));
+    return reply.code(201).send(await repo.createScene(body));
   });
 
   app.get("/scenes", async (req) => {
@@ -131,19 +122,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   app.get("/scenes/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const scene = repo.getScene(id);
+    const scene = await repo.getScene(id);
     return scene ? scene : reply.code(404).send({ error: "scene not found" });
   });
 
   app.patch("/scenes/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const updated = repo.updateScene(id, req.body as ScenePatch);
+    const updated = await repo.updateScene(id, req.body as ScenePatch);
     return updated ? updated : reply.code(404).send({ error: "scene not found" });
   });
 
   app.delete("/scenes/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return repo.deleteScene(id)
+    return (await repo.deleteScene(id))
       ? reply.code(204).send()
       : reply.code(404).send({ error: "scene not found" });
   });
@@ -153,13 +144,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const body = req.body as AddExchangeInput | AddExchangeInput[];
     const inputs = Array.isArray(body) ? body : [body];
     for (const ex of inputs) {
-      const err = requireFields(ex, [
-        "psm",
-        "method",
-      ]);
+      const err = requireFields(ex, ["psm", "method"]);
       if (err) return reply.code(400).send({ error: err });
     }
-    return reply.code(201).send(repo.addExchanges(inputs));
+    return reply.code(201).send(await repo.addExchanges(inputs));
   });
 
   app.get("/exchanges", async (req) => {
@@ -169,7 +157,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   app.delete("/exchanges", async (req) => {
     const { psm, method } = req.query as { psm?: string; method?: string };
-    return { deleted: repo.clearExchanges({ psm, method }) };
+    return { deleted: await repo.clearExchanges({ psm, method }) };
   });
 
   // ----- measurement -----
@@ -178,13 +166,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       spaceId?: string;
       exchanges?: AddExchangeInput[];
     };
-    const templates = repo.listTemplates(body.spaceId);
-    const scenes = repo.listScenes(
-      body.spaceId ? { spaceId: body.spaceId } : undefined,
-    );
+    const [templates, scenes] = await Promise.all([
+      repo.listTemplates(body.spaceId),
+      repo.listScenes(body.spaceId ? { spaceId: body.spaceId } : undefined),
+    ]);
     const exchanges: Exchange[] = body.exchanges
       ? body.exchanges.map((e) => ({ ...e, id: e.id ?? newId("xch") }))
-      : repo.listExchanges();
+      : await repo.listExchanges();
     return measure({ templates, scenes, exchanges });
   });
 

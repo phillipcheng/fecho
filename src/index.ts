@@ -22,6 +22,12 @@ export {
 } from "./coverage/measure.js";
 
 export { MemoryRepository } from "./store/memory.js";
+export { MySqlRepository } from "./store/mysql.js";
+export { readMysqlConfigFromEnv, type MysqlConfig } from "./store/config.js";
+export {
+  createRepository,
+  type CreateRepositoryResult,
+} from "./store/factory.js";
 export type {
   Repository,
   CreateSpaceInput,

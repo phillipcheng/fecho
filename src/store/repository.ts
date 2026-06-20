@@ -54,33 +54,37 @@ export interface ExchangeFilter {
 }
 
 /**
- * Persistence boundary. The in-memory implementation is the default; other
- * backends (SQLite, Postgres, …) can implement this same interface.
+ * Persistence boundary. Methods are async so backends can do real I/O; the
+ * in-memory implementation resolves immediately. MySQL is the persistent
+ * backend; other stores (SQLite, Postgres, …) can implement the same interface.
  */
 export interface Repository {
   // spaces
-  createSpace(input: CreateSpaceInput): Space;
-  getSpace(id: string): Space | undefined;
-  listSpaces(): Space[];
-  updateSpace(id: string, patch: SpacePatch): Space | undefined;
-  deleteSpace(id: string): boolean;
+  createSpace(input: CreateSpaceInput): Promise<Space>;
+  getSpace(id: string): Promise<Space | undefined>;
+  listSpaces(): Promise<Space[]>;
+  updateSpace(id: string, patch: SpacePatch): Promise<Space | undefined>;
+  deleteSpace(id: string): Promise<boolean>;
 
   // templates
-  createTemplate(input: CreateTemplateInput): Template;
-  getTemplate(id: string): Template | undefined;
-  listTemplates(spaceId?: string): Template[];
-  updateTemplate(id: string, patch: TemplatePatch): Template | undefined;
-  deleteTemplate(id: string): boolean;
+  createTemplate(input: CreateTemplateInput): Promise<Template>;
+  getTemplate(id: string): Promise<Template | undefined>;
+  listTemplates(spaceId?: string): Promise<Template[]>;
+  updateTemplate(id: string, patch: TemplatePatch): Promise<Template | undefined>;
+  deleteTemplate(id: string): Promise<boolean>;
 
   // scenes
-  createScene(input: CreateSceneInput): Scene;
-  getScene(id: string): Scene | undefined;
-  listScenes(filter?: { spaceId?: string; templateId?: string }): Scene[];
-  updateScene(id: string, patch: ScenePatch): Scene | undefined;
-  deleteScene(id: string): boolean;
+  createScene(input: CreateSceneInput): Promise<Scene>;
+  getScene(id: string): Promise<Scene | undefined>;
+  listScenes(filter?: { spaceId?: string; templateId?: string }): Promise<Scene[]>;
+  updateScene(id: string, patch: ScenePatch): Promise<Scene | undefined>;
+  deleteScene(id: string): Promise<boolean>;
 
   // exchanges
-  addExchanges(inputs: AddExchangeInput[]): Exchange[];
-  listExchanges(filter?: ExchangeFilter): Exchange[];
-  clearExchanges(filter?: ExchangeFilter): number;
+  addExchanges(inputs: AddExchangeInput[]): Promise<Exchange[]>;
+  listExchanges(filter?: ExchangeFilter): Promise<Exchange[]>;
+  clearExchanges(filter?: ExchangeFilter): Promise<number>;
+
+  /** Release any resources (connection pools, …). Optional. */
+  close?(): Promise<void>;
 }
