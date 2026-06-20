@@ -12,7 +12,7 @@ scenario-coverage platforms (Nario): you define **scenes** as labelled feature
 combinations, feed in recorded **traffic**, and echo reports which scenes were
 hit and your overall scene-coverage rate.
 
-> Status: **engine + HTTP API** (v1). No web UI yet — that's on the roadmap.
+> Status: **engine + HTTP API + React web UI** (v1).
 
 ## Concepts
 
@@ -56,8 +56,24 @@ value-comparing condition is satisfied when **any** resolved value matches.
 npm install
 npm test          # 35 tests
 npm run build
-npm start         # serves on :3000 (PORT / HOST env vars)
+npm start         # API on :3000 (PORT / HOST env vars)
 ```
+
+### Web UI
+
+A React (Vite) UI lives in [`web/`](web). It drives the whole flow — spaces,
+templates with a feature editor, scenes with a condition editor, traffic
+ingestion, the coverage report, and a path playground.
+
+```bash
+npm start                 # 1) API on :3000 (from the repo root)
+cd web && npm install
+npm run dev               # 2) UI on :5173, proxying /api → :3000
+```
+
+The dev server proxies `/api/*` to the backend (override the target with
+`ECHO_API=http://host:port`). For production, `npm run build` emits static files
+to `web/dist`; point them at the API via `VITE_API_BASE`.
 
 ### Use as a library
 
@@ -109,7 +125,6 @@ the supplied traffic ad-hoc; otherwise it uses stored exchanges.
 ## Roadmap
 
 - Persistent stores (SQLite / Postgres) behind the `Repository` interface
-- Web UI for templates, scenes, and coverage reports
 - Traffic ingestion adapters (capture proxy, log import)
 - Scene recommendation from observed traffic
 - gRPC / Thrift exchange support
